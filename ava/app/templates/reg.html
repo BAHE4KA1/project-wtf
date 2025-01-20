@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Registration</title>
+</head>
+<body>
+
+<h1>Регистрация</h1>
+
+<form method="post" style="display: flex; flex-direction: column; gap: 20px">
+    {% csrf_token %}
+    <input type="email" name="email" placeholder="example@mail.com">
+    <input type="password" name="password" placeholder="Пароль">
+    <button type="submit">Зарегистрироваться</button>
+</form>
+
+{% if e %}
+<h2>{{ e }}</h2>
+{% endif %}
+
+</body>
+</html>

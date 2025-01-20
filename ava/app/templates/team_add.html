@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>Team add</title>
+    <link rel="stylesheet" href="{% static 'styles/team_add.css' %}">
+    <script src="{% static 'script/team_add.js' %}"></script>
+</head>
+<body>
+
+<form method="post">
+    {% csrf_token %}
+
+    Название команды:
+    <input id="name" name="name" placeholder="Название" required>
+
+    Статус:
+    <select id="status" name="status" required>
+        <option value="active">Активна</option>
+        <option value="inactive">Неактивна</option>
+        <option value="suspended">Приостановлена</option>
+    </select>
+
+    Логотип:
+    <input type="file" id="logo" name="logo" placeholder="Логотип команды" accept="image/*">
+
+    Описание:
+    <textarea id="description" name="description" placeholder="Описание"></textarea>
+
+    <dl>
+        <dt>Участники</dt>
+        <dd><input type="text" id="member-1" name="member-1" placeholder="Имя Фамилия" required> <button type="button" name="minus">-</button></dd>
+        <dd><button type="button" name="plus">+</button></dd>
+    </dl>
+
+    <dl>
+        <dt>Ссылки</dt>
+        <dd><input type="text" id="link-1" name="link-1" placeholder="Ссылка" required>
+            <button type="button" name="minus" id="button-l-2">-</button></dd>
+        <dd><button type="button" name="plus">+</button></dd>
+    </dl>
+
+    <button type="submit">Сохранить</button>
+
+</form>
+
+</body>
+</html>

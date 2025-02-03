@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Users</title>
+</head>
+<body>
+
+<dl>
+    <dt>Пользователи</dt>
+    {% for user in profiles %}
+    <dd><a href="/users/{{ user.app_id }}">{{ user }}</a></dd>
+    {% endfor %}
+</dl>
+
+</body>
+</html>

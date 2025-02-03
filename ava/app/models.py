@@ -4,33 +4,52 @@ from django.contrib.auth.models import User
 
 class UserAccount(models.Model):
     __tablename__ = 'profiles'
-    id = models.IntegerField(primary_key=True)
+    id = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     email = models.EmailField(max_length=128, unique=True, blank=False)
 
-    def create_user(*args, **kwargs):
-        user = User.objects.create_user(*args, **kwargs)
-        return UserAccount.objects.create(user=user)
+    @staticmethod
+    def create_user(**kwargs) -> None:
+        user = User.objects.create_user(
+            username=kwargs.get('email'),
+            password=kwargs.get('password'),
+            email=kwargs.get('email')
+        )
+        ua = UserAccount.objects.create(user=user, email=kwargs.get('email'))
+        SiteProfile.objects.create(person_id=ua.id)
 
-    def __str__(self):
-        return f'{self.user.username} - {self.email}'
+    def save(self, *args, **kwargs) -> None:
+        super(UserAccount, self).save(*args, **kwargs)
+
+    def delete_user(self) -> None:
+        try:
+            self.user = User.objects.filter(id=self.user.id).delete()
+            SiteProfile.objects.filter(person_id=self.id).delete()
+            self.delete()
+        except Exception as e:
+            raise e
+
+    def __str__(self) -> str:
+        return f'{self.email} ({self.id})'
 
 
 class SiteProfile(models.Model):
     __tablename__ = 'site_profiles'
-    id = models.AutoField(primary_key=True)
-    user_id = models.ForeignKey(UserAccount, on_delete=models.CASCADE, db_index=True)
+    id = models.AutoField(primary_key=True, blank=False, unique=True)
+    app_id = models.CharField(max_length=256, blank=False, unique=True)
+    person_id = models.CharField(max_length=16, blank=False, unique=True)
 
-    statuses = [
+    search_statuses = [
         ('active', 'Активный'),
         ('inactive', 'Неактивный'),
         ('suspended', 'Приостановлен'),
     ]
 
-    full_name = models.CharField(max_length=128, blank=False)
-    working_status = models.CharField(max_length=128, blank=False, choices=statuses)
+    full_name = models.CharField(max_length=128, blank=True)
+    do_search = models.CharField(max_length=128, blank=True, choices=search_statuses)
+    search_status = models.CharField(max_length=256, blank=True)
 
     # Добавить форму для прикрепления файла фотки, который мы будем сохранять на сервере
     logo_url = models.CharField(max_length=256, blank=True)
@@ -43,6 +62,13 @@ class SiteProfile(models.Model):
     # Добавить форму для ввода ссылок в формате нумерованного списка
     links = models.CharField(max_length=1024, blank=True)
     teams = models.CharField(max_length=1024, blank=True)  # Логика как с cart в проекте магазина
+
+    def set_custom_id(self, new_id) -> None:
+        if not SiteProfile.objects.filter(app_id=new_id).exists():
+            self.app_id = new_id
+            self.save()
+        else:
+            raise Exception('exists')
 
     def get_links(self) -> list:
         links_list = self.links.split(',')
@@ -80,19 +106,25 @@ class SiteProfile(models.Model):
     def remove_team(self, team: str) -> str:
         if self.teams:
             teams_list = self.teams.split(',')
-            new_teams = [team.strip() for team in teams_list if team.strip()!= team]
+            new_teams = [team.strip() for team in teams_list if team.strip() != team]
             self.teams = ', '.join(new_teams)
             return f'Successfully removed team {team}'
         else:
             return 'No teams to remove'
 
+    @staticmethod
+    def patch(*args, **kwargs) -> None:
+        SiteProfile(*args, **kwargs).save()
+
     def save(self, *args, **kwargs) -> None:
         if not self.description:
             self.description = 'Пользователь не предоставил описания'
+        if not self.app_id:
+            self.app_id = f'UnsetID_{self.id}'
         super(SiteProfile, self).save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f'Site profile for {self.user_id}'
+        return f'Site profile for {self.app_id}'
 
 
 class Team(models.Model):
@@ -153,7 +185,7 @@ class Team(models.Model):
     def remove_member(self, member: str) -> str:
         if self.team_members:
             members_list = self.team_members.split(',')
-            new_members = [member.strip() for member in members_list if member.strip()!= member]
+            new_members = [member.strip() for member in members_list if member.strip() != member]
             self.team_members = ', '.join(new_members)
             return f'Successfully removed member {member}'
         else:
@@ -166,3 +198,5 @@ class Team(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} - {self.status}'
+
+# TODO: Менеджер пользователей

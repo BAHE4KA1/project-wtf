@@ -3,15 +3,15 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import *
 
 
-class ProfileInline(admin.StackedInline):
+class AccountInline(admin.StackedInline):
     model = UserAccount
     can_delete = False
     verbose_name_plural = 'Профили'
 
 
 class UserAdmin(BaseUserAdmin):
-    inlines = (ProfileInline, )
-    list_display = ()
+    inlines = (AccountInline, )
+    list_display = ('id', 'email', 'username', 'is_superuser', 'is_active')
 
     # def get_cart(self, instance):
     #     return instance.profile.cart

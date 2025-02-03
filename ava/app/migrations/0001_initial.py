@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False)),
                 ('full_name', models.CharField(max_length=128)),
-                ('working_status', models.CharField(choices=[('active', 'Активный'), ('inactive', 'Неактивный'), ('suspended', 'Приостановлен')], max_length=128)),
+                ('do_search', models.CharField(choices=[('active', 'Активный'), ('inactive', 'Неактивный'), ('suspended', 'Приостановлен')], max_length=128)),
                 ('logo_url', models.CharField(blank=True, max_length=256)),
                 ('description', models.TextField(blank=True, max_length=1024)),
                 ('stack', models.CharField(blank=True, max_length=1024)),

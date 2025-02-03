@@ -13,6 +13,10 @@
     {% csrf_token %}
     <button type="submit" name="logout">Выйти</button>
 </form>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" name="delete">Удалить пользователя</button>
+</form>
 {% endif %}
 
 {% for team in teams %}

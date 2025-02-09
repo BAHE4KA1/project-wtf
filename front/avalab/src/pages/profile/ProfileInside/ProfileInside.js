@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
-import { Link, Routes, Route } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 
 import "./ProfileInside.css";
-import PersonalData from '../PersonalData/PersonalData';
 
 import image3 from "../../../images/prof-inside-img/image 3.png";
 import user from "../../../images/prof-inside-img/user.svg";
@@ -126,9 +125,7 @@ export default class ProfileInside extends Component {
           </div>
         )}
 
-        <Routes>
-          <Route path="personal-data" element={<PersonalData />} />
-        </Routes>
+        <Outlet />
       </div>
     );
   }

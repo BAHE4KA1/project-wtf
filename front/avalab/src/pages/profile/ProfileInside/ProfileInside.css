@@ -1,0 +1,219 @@
+.ProfileInside {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    justify-content: space-between;
+}
+
+.header-ProfileInside {
+    display: flex;
+    justify-content: center;
+    padding-top: 52px;
+    width: 100vw;
+    height: 112px;
+    border-radius: 0px 0px 16px 16px;
+    background-color: #4285F4;
+}
+
+.header-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.header-container img {
+    width: 128px;
+    height: 128px;
+    border-radius: 12px;
+    border: 4px solid #FFF;
+}
+
+.name {
+    color: #000;
+    text-align: center;
+    font-family: Raleway;
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.email {
+    color: #494949;
+    text-align: center;
+    font-family: Raleway;
+    font-size: 16px;
+    font-weight: 400;
+}
+
+/* Основное содержимое */
+main {
+    display: flex;
+    flex-direction: column;
+    margin-top: 112.5px;
+    padding: 16px;
+    min-height: 61.25vh;
+    max-height: 100%;
+    justify-content: space-between;
+}
+
+.main-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 📌 Обновили селектор с `a` на `Link` */
+main a, main .link {
+    display: flex;
+    padding: 12px 10px;
+    justify-content: space-between;
+    align-items: center;
+    align-self: stretch;
+    border-radius: 4px;
+    background: #E7EAEE;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.3s;
+}
+
+main a:hover, main .link:hover {
+    background: #d0d4d9;
+}
+
+/* Блок кнопки */
+.button-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.button-left span {
+    color: #282B33;
+    font-family: Raleway;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Кнопка выхода */
+.exit {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #FFF;
+    border: none;
+}
+
+.exit span {
+    color: #F00;
+    font-family: Raleway;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Футер */
+footer {
+    display: flex;
+    border-top: 1px solid #767982;
+    height: 94px;
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 32px;
+}
+
+/* 📌 Исправляем ссылки в футере */
+footer a, footer .link {
+    text-decoration: none;
+    display: flex;
+}
+
+footer a img, footer .link img {
+    width: 40px;
+    height: 40px;
+    transition: opacity 0.3s;
+}
+
+footer a:hover img, footer .link:hover img {
+    opacity: 0.7;
+}
+
+/* Модальное окно выхода */
+.exitMenuPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 91.79vw;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease-in-out;
+}
+
+/* Вопрос "Вы точно хотите выйти?" */
+.exitYes {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    border: 1px solid black;
+    gap: 10px;
+    border-radius: 12px;
+    background: #FFF;
+}
+
+/* 📌 Заменяем стили для кнопки "Да" */
+.exitYes a, .exitYes .link {
+    width: 100%;
+    border-top: 1px solid black;
+    text-align: center;
+    text-decoration: none;
+    color: #F00;
+    font-family: Raleway;
+    font-size: 18px;
+    font-weight: 500;
+    transition: 0.6s;
+}
+
+.exitYes a:hover, .exitYes .link:hover {
+    background: #fdd;
+}
+
+/* Кнопка "Нет" */
+.exitNo {
+    height: 50px;
+    background-color: #FFF;
+    border-radius: 12px;
+    color: var(--Core-Blue, #4285F4);
+    text-align: center;
+    font-family: Raleway;
+    font-size: 18px;
+    font-weight: 500;
+    border: none;
+    transition: 0.6s;
+}
+
+/* Затемнение фона */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.25); /* Затемнение */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateY(300px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}

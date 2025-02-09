@@ -1,7 +1,7 @@
 from datetime import datetime
 from datetime import timedelta
 from typing import Optional
-
+import os
 from fastapi import Depends
 from jose import JWTError, jwt
 
@@ -170,3 +170,20 @@ def get_team(app_id):
         return team
     else:
         return False
+
+
+"""
+Специфические функции получения чего-то
+"""
+
+
+def save_file(file, save_type, token):
+    profile = get_user_by_token(token).get_profile()
+    if save_type == 'user-icon':
+        with open(f'user_files/user_icons/{profile.app_id}-icon.{file.content_type[6:]}', 'wb') as f:
+            f.write(file.file.read())
+            return profile.set_avatar(f.name)
+    return 'some error'
+
+# TODO: update (в тч. по app_id), delete, Teams
+# TODO: In main.py do token processing only, work with users and profiles here

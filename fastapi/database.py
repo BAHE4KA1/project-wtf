@@ -1,6 +1,5 @@
 from sqlalchemy import String, create_engine, ForeignKey, Boolean
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, sessionmaker, relationship
-from sqlalchemy.sql.sqltypes import SchemaType
 
 from config import DATABASE_URL as db_url
 
@@ -44,6 +43,11 @@ class Profile(Base):
 
     user = relationship("User", back_populates='profile')
     team_connection = relationship("Team", back_populates='profile')
+
+    def set_avatar(self, filename: str):
+        self.avatar_url = filename
+        session.commit()
+        return {'avatar': filename}
 
     def get_owned_team(self):
         return session.query(Team).filter(Team.owner_id == self.id).first()
@@ -130,3 +134,8 @@ class Team(Base):
 engine = create_engine(db_url)
 Base.metadata.create_all(engine)
 session = sessionmaker(engine)()
+
+# TODO: Multiple Teams per user
+# TODO: get_session() to do async
+# TODO: End with Teams and finally do chat base
+# TODO: Icon delete and update

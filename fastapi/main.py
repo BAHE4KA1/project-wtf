@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile
 import uvicorn
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -75,6 +75,11 @@ async def delete_user(password: str, token: str = Depends(oauth2_scheme)):
         return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Incorrect password')
 
 
+@app.post('/files/add_icon/', tags=['Профиль'])
+async def file_icon(file: UploadFile, token: str = Depends(oauth2_scheme)):
+    return um.save_file(file, 'user-icon', token)
+
+
 @app.patch('/profiles/me/update', tags=['Профиль'])
 async def profile_update(full_name, do_search, description, token: str = Depends(oauth2_scheme)):
     return um.profile_patch(um.get_user_by_token(token), full_name=full_name, do_search=do_search, description=description)
@@ -138,3 +143,8 @@ async def team_add_member(app_id: str, token: str = Depends(oauth2_scheme)):
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+# TODO: Do chat endpoints with websockets
+# TODO: Do calender endpoints
+# TODO: Do parsing in another one file
+# TODO: Do email and phone reg and auth endpoints and funcs in um

@@ -5,7 +5,7 @@ import os
 from fastapi import Depends
 from jose import JWTError, jwt
 
-from database import User, session, Profile, SessionToken, Team
+from database import User, Profile, session, SessionToken, Team
 # from types import Result
 from config import pwd_context, oauth2_scheme, ALGORITHM, SECRET_KEY
 
@@ -22,7 +22,8 @@ def create_user(username: str, password: str, app_id: str = None):
         session.add(user)
         session.commit()
         user = session.query(User).filter(User.username == username).first()
-        if not app_id: app_id = user.id
+        if not app_id:
+            app_id = user.id
         session.add(Profile(user=user, app_id=app_id))
         session.commit()
         return True
@@ -30,7 +31,7 @@ def create_user(username: str, password: str, app_id: str = None):
         return None
 
 
-def get_user(username: str):
+def get_user_by_username(username: str):
     user = session.query(User).filter(User.username == username).first()
     if user:
         return user
@@ -51,7 +52,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def authenticate(username: str, password: str):
-    user = get_user(username)
+    user = get_user_by_username(username)
     if not user or not verify_password(password, user.hashed_password):
         return None
     else:
@@ -70,11 +71,9 @@ def create_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     token = session.query(SessionToken).filter(SessionToken.user_id == user.id).first()
     if not token:
         session.add(SessionToken(token=encoded_jwt, user=user))
-        session.commit()
     else:
         token.token = encoded_jwt
-        session.commit()
-
+    session.commit()
     return encoded_jwt
 
 
@@ -90,14 +89,14 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         return credentials_exception
 
-    user = get_user(username)
+    user = get_user_by_username(username)
     if user is None:
         return credentials_exception
 
     return user
 
 
-def delete_token(token):
+def delete_token(token: str):
     token = session.query(SessionToken).filter(SessionToken.token == token).first()
     if token:
         session.delete(token)
@@ -105,7 +104,8 @@ def delete_token(token):
     return 'Token deleted'
 
 
-def delete_user(user, password: str):
+def delete_user(token: str, password: str):
+    user = get_user_by_token(token)
     hashed_password = session.query(User).filter(User.username == user.username).first().hashed_password
     user = session.query(User).filter(User.username == user.username).first()
     if verify_password(password, hashed_password):
@@ -123,17 +123,47 @@ def delete_user(user, password: str):
 """
 
 
-def get_profile(app_id: str = Depends(oauth2_scheme)):
-    return session.query(Profile).filter(Profile.app_id == app_id).first()
+def get_profile(app_id: str):
+    profile = session.query(Profile).filter(Profile.app_id == app_id).first()
+    return profile
 
 
-def profile_patch(user, full_name: str = None, do_search: bool = None, description: str = None):
-    profile = user.get_profile()
+def profile_patch(token: str, new_id: str = None, full_name: str = None, do_search: bool = None, description: str = None):
+    user = get_user_by_token(token)
+    profile = session.query(Profile).filter(Profile.user_id == user.id).first()
     profile.full_name = full_name if full_name else profile.full_name
     profile.description = description if description else profile.description
     profile.do_search = bool(do_search) if do_search is not None else profile.do_search
+    if new_id:
+        profile_update_app_id(profile, new_id)
     session.commit()
     return user.get_profile()
+
+
+def profile_update_app_id(profile, new_id):
+    old_id = profile.app_id
+    teams_owned = get_my_teams_by_profile(profile)
+    profile.set_app_id(new_id)
+    for team in teams_owned:
+        team.update_owner(profile)
+    teams_membered = get_membered_teams(old_id)
+    for team in teams_membered:
+        team.update_member(old_id, new_id)
+    if os.path.exists(f'user_files/{old_id}'):
+        os.rename(f'user_files/{old_id}', f'user_files/{new_id}')
+
+        avatar_file_type = ''
+        a = False
+        for i in profile.avatar_url:
+            if a:
+                avatar_file_type += i
+            elif i == '.':
+                a = True
+
+        profile.set_avatar(f'user_files/{new_id}/user-icon.{avatar_file_type}')
+    print(os.path.exists(f'user_files/{old_id}'), f'user_files/{old_id}')
+    session.commit()
+    return get_my_teams_by_profile(profile)
 
 
 """
@@ -141,27 +171,29 @@ def profile_patch(user, full_name: str = None, do_search: bool = None, descripti
 """
 
 
-def create_team(owner, title, app_id):
-    profile = owner.get_profile()
-    team = profile.get_owned_team()
-    if not team:
-        team = Team(profile=profile, title=title, app_id=app_id, members=profile.app_id)
-        session.add(team)
-        session.commit()
-        return profile.get_owned_team()
-    else:
-        return False
+def get_membered_teams(app_id):
+    teams = session.query(Team).filter(Team.members.contains(app_id))
+    return [team for team in teams]
 
 
-def delete_team(owner):
-    profile = owner.get_profile()
-    team = profile.get_owned_team()
-    if team:
+def create_team(token: str, title: str, app_id: str):
+    if session.query(Team).filter(Team.app_id == app_id).first():
+        return 409
+    profile = get_user_by_token(token).get_profile()
+    team = Team(title=title, app_id=app_id, profile=profile, members=profile.app_id)
+    session.add(team)
+    session.commit()
+    return get_my_teams_by_profile(profile)
+
+
+def delete_team(token: str, team_id: str):
+    profile = get_user_by_token(token).get_profile()
+    team = session.query(Team).filter(Team.app_id == team_id).first()
+    if team in [t for t in get_my_teams_by_profile(profile)]:
         session.delete(team)
         session.commit()
-        return 'Team deleted'
-    else:
-        return 'No team found'
+        return f'Team {team_id} - ({team.title}) deleted'
+    return '404'
 
 
 def get_team(app_id):
@@ -172,18 +204,66 @@ def get_team(app_id):
         return False
 
 
+def get_my_teams(token):
+    profile = get_user_by_token(token).get_profile()
+    teams = session.query(Team).filter(Team.owner_id == profile.app_id)
+    return [team for team in teams]
+
+
+def get_my_teams_by_profile(profile):
+    teams = session.query(Team).filter(Team.owner_id == profile.app_id)
+    return [team for team in teams]
+
+
+def add_team_member(token: str, team_id: str, member_id: str):
+    member = get_profile(member_id)
+    owned_teams = get_my_teams(token)
+    if member and team_id in [team.app_id for team in owned_teams]:
+        team = get_team(team_id)
+        team.add_member(member_id)
+        session.commit()
+        return team.members
+    return 'No team or member found'
+
+
+def delete_team_member(token: str, team_id: str, member_id: str):
+    member = get_profile(member_id)
+    owned_teams = get_my_teams(token)
+    team = get_team(team_id)
+    if member.app_id and member.app_id in team.members and team_id in [t.app_id for t in owned_teams]:
+        team.remove_member(member_id)
+        session.commit()
+        return team.members
+    return 'No team or member found'
+
+
 """
 Специфические функции получения чего-то
 """
 
 
-def save_file(file, save_type, token):
+def save_icon(file, token):
     profile = get_user_by_token(token).get_profile()
-    if save_type == 'user-icon':
-        with open(f'user_files/user_icons/{profile.app_id}-icon.{file.content_type[6:]}', 'wb') as f:
-            f.write(file.file.read())
-            return profile.set_avatar(f.name)
-    return 'some error'
+    if not os.path.exists(f'user_files/{profile.app_id}'):
+        os.mkdir(f'user_files/{profile.app_id}')
+    with open(f'user_files/{profile.app_id}/user-icon.{file.content_type[6:]}', 'wb') as f:
+        f.write(file.file.read())
+        return profile.set_avatar(f.name)
 
-# TODO: update (в тч. по app_id), delete, Teams
-# TODO: In main.py do token processing only, work with users and profiles here
+
+def update_icon(token, file):
+    profile = get_user_by_token(token).get_profile()
+    old_file = profile.avatar_url
+    if os.path.exists(old_file):
+        os.remove(old_file)
+    return save_icon(file, token)
+
+
+def delete_icon(token):
+    profile = get_user_by_token(token).get_profile()
+    avatar_url = profile.avatar_url
+    profile.delete_avatar()
+    if os.path.exists(avatar_url):
+        os.remove(avatar_url)
+        return f'User {profile.app_id} - Icon deleted'
+    return 'File deleted'

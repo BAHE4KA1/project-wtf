@@ -11,6 +11,7 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
+
     username: Mapped[str] = mapped_column(String(255), unique=True)
     hashed_password: Mapped[str] = mapped_column(String(128))
     active: Mapped[bool] = mapped_column(default=True)
@@ -19,10 +20,13 @@ class User(Base):
     profile = relationship("Profile", back_populates="user")
 
     def get_profile(self):
-        return session.query(Profile).filter(Profile.user_id == self.id).first()
+        profile = session.query(Profile).filter(Profile.user_id == self.id).first()
+        return profile
 
     def get_token(self):
-        return session.query(SessionToken).filter(SessionToken.user_id == self.id).first()
+        token = session.query(SessionToken).filter(SessionToken.user_id == self.id).first()
+        
+        return token if token else 'Not authorized'
 
 
 class Profile(Base):
@@ -49,11 +53,14 @@ class Profile(Base):
         session.commit()
         return {'avatar': filename}
 
-    def get_owned_team(self):
-        return session.query(Team).filter(Team.owner_id == self.id).first()
+    def delete_avatar(self):
+        self.avatar_url = None
+        session.commit()
+        return {'avatar': None}
 
     def get_user(self):
-        return session.query(User).filter(User.id == self.user_id).first()
+        user = session.query(User).filter(User.id == self.user_id).first()
+        return user
 
     def set_app_id(self, new_id):
         if not session.query(Profile).filter(Profile.app_id == new_id).first():
@@ -99,43 +106,68 @@ class SessionToken(Base):
     user: Mapped[User] = relationship("User", back_populates="token")
 
     def get_user(self):
-        return session.query(User).filter(User.id == self.user_id).first()
+        user = session.query(User).filter(User.id == self.user_id).first()
+        return user
 
 
 class Team(Base):
     __tablename__ = "teams"
     id: Mapped[int] = mapped_column(primary_key=True)
     app_id: Mapped[int] = mapped_column(String(255), nullable=True)
-    owner_id: Mapped[int] = mapped_column(String(255), ForeignKey("profiles.id"))
+    owner_id: Mapped[int] = mapped_column(String(255), ForeignKey("profiles.app_id"), nullable=True)
     title: Mapped[str] = mapped_column(String())
-    members: Mapped[int] = mapped_column()
+    members: Mapped[str] = mapped_column()
 
     profile = relationship('Profile', back_populates='team_connection')
 
     def get_owner(self):
-        return session.query(Profile).filter(Profile.id == self.owner_id).first()
+        owner = session.query(Profile).filter(Profile.id == self.owner_id).first()
+        return owner
 
-    def add_member(self, member):
+    def update_owner(self, new):
+        self.profile = new
+        session.commit()
+        return self.owner_id
+
+    def add_member(self, member: str):
         members_list = self.members.split(', ')
         if member not in members_list:
-            print(member, members_list)
             members_list.append(member)
             self.members = ', '.join(members_list)
-            print(self.members)
             session.commit()
-        else:
-            return self
+        return self
 
-    def get_members(self):
+    def update_member(self, member: str, new: str):
+        members_list = self.members.split(', ')
+        if member in members_list:
+            members_list[members_list.index(member)] = new
+            self.members = ', '.join(members_list)
+            session.commit()
+            return 200
+        else:
+            return 404
+
+    def remove_member(self, member):
+        members_list = self.members.split(', ')
+        if member != self.owner_id:
+            if member in members_list:
+                members_list.remove(member)
+                self.members = ', '.join(members_list)
+                session.commit()
+                return 205
+            else:
+                return 404
+        return 405
+
+    def get_members(self) -> list:
         members_list = self.members.split(',')
         return [member.strip() for member in members_list if member.strip()]
 
 
-engine = create_engine(db_url)
+engine = create_engine(db_url, echo=True)
 Base.metadata.create_all(engine)
 session = sessionmaker(engine)()
 
-# TODO: Multiple Teams per user
-# TODO: get_session() to do async
-# TODO: End with Teams and finally do chat base
+
+# TODO: Finally do chat base
 # TODO: Icon delete and update

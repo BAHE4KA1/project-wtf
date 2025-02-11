@@ -66,23 +66,13 @@ async def logout(token: str = Depends(oauth2_scheme)):
     return um.delete_token(token)
 
 
-@app.delete('/auth/delete_user', tags=['Авторизация'])
+@app.delete('/auth/delete_user', tags=['Авторизация']) # TODO: Delete user files with him/her/they (and so on)
 async def delete_user(password: str, token: str = Depends(oauth2_scheme)):
-    result = um.delete_user(um.get_user_by_token(token), password)
+    result = um.delete_user(token, password)
     if result:
         return {'result': 'success', 'message': 'User deleted successfully`'}
     else:
         return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Incorrect password')
-
-
-@app.post('/files/add_icon/', tags=['Профиль'])
-async def file_icon(file: UploadFile, token: str = Depends(oauth2_scheme)):
-    return um.save_file(file, 'user-icon', token)
-
-
-@app.patch('/profiles/me/update', tags=['Профиль'])
-async def profile_update(full_name, do_search, description, token: str = Depends(oauth2_scheme)):
-    return um.profile_patch(um.get_user_by_token(token), full_name=full_name, do_search=do_search, description=description)
 
 
 @app.get('/profiles/me', tags=['Профиль'])
@@ -97,6 +87,26 @@ async def profile_get_me(token: str = Depends(oauth2_scheme)):
     - Профиль пользователя, связанный с предоставленным токеном.
     """
     return um.get_user_by_token(token).get_profile()
+
+
+@app.post('/profiles/me/add_icon/', tags=['Профиль'])
+async def profile_add_icon(file: UploadFile, token: str = Depends(oauth2_scheme)):
+    return um.save_icon(file, token)
+
+
+@app.patch('/profiles/me/update_icon/', tags=['Профиль'])
+async def profile_update_icon(file: UploadFile, token: str = Depends(oauth2_scheme)):
+    return um.update_icon(token, file)
+
+
+@app.delete('/profiles/me/delete_icon/', tags=['Профиль'])
+async def profile_delete_icon(token: str = Depends(oauth2_scheme)):
+    return um.delete_icon(token)
+
+
+@app.patch('/profiles/me/update', tags=['Профиль'])
+async def profile_update(full_name: str = None, app_id: str = None, do_search: bool = None, description: str = None, token: str = Depends(oauth2_scheme)):
+    return um.profile_patch(token, new_id=app_id, full_name=full_name, do_search=do_search, description=description)
 
 
 @app.get('/profiles/{app_id}', tags=['Профиль'])
@@ -115,30 +125,37 @@ async def profile_get_user(app_id: str):
 
 @app.post('/teams/create', tags=['Команды'])
 async def team_create(title: str, app_id: str, token: str = Depends(oauth2_scheme)):
-    return um.create_team(um.get_user_by_token(token), title, app_id)
+    return um.create_team(token, title, app_id)
 
 
-@app.delete('/teams/delete', tags=['Команды'])
-async def team_delete(token: str = Depends(oauth2_scheme)):
-    return um.delete_team(um.get_user_by_token(token))
+@app.get('/teams/my_own', tags=['Команды'])
+async def team_get_my_own(token: str = Depends(oauth2_scheme)):
+    return [team for team in um.get_my_teams(token)]
+
+
+@app.delete('/teams/my_own/{team_id}/delete', tags=['Команды'])
+async def team_delete(team_id: str, token: str = Depends(oauth2_scheme)):
+    return um.delete_team(token, team_id)
+
+
+@app.post('/teams/my_own/{team_id}/add_member/', tags=['Команды'])
+async def team_add_member(team_id: str, member_id: str, token: str = Depends(oauth2_scheme)):
+    return um.add_team_member(token, team_id, member_id)
+
+
+@app.delete('/teams/my_own/{team_id}/delete_member/', tags=['Команды'])
+async def team_delete_member(team_id: str, member_id: str, token: str = Depends(oauth2_scheme)):
+    return um.delete_team_member(token, team_id, member_id)
 
 
 @app.get('/teams/my', tags=['Команды'])
 async def team_get_my(token: str = Depends(oauth2_scheme)):
-    return um.get_user_by_token(token).get_profile().get_owned_team()
+    return [team for team in um.get_membered_teams(um.get_user_by_token(token).get_profile().app_id)]
 
 
 @app.get('/teams/{team_id}', tags=['Команды'])
 async def team_get(team_id: str):
     return um.get_team(team_id)
-
-
-@app.post('/teams/add_member/', tags=['Команды'])
-async def team_add_member(app_id: str, token: str = Depends(oauth2_scheme)):
-    owner = um.get_user_by_token(token)
-    team = owner.get_profile().get_owned_team()
-    team.add_member(app_id)
-    return owner.get_profile().get_owned_team()
 
 
 if __name__ == '__main__':

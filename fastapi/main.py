@@ -1,13 +1,14 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, WebSocket
 import uvicorn
 from fastapi.security import OAuth2PasswordRequestForm
 
 import user_manager as um
-
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, oauth2_scheme
+from connection_manager import ConnectionManager
+from database import session
 
 app = FastAPI()
 
@@ -66,7 +67,7 @@ async def logout(token: str = Depends(oauth2_scheme)):
     return um.delete_token(token)
 
 
-@app.delete('/auth/delete_user', tags=['Авторизация']) # TODO: Delete user files with him/her/they (and so on)
+@app.delete('/auth/delete_user', tags=['Авторизация'])
 async def delete_user(password: str, token: str = Depends(oauth2_scheme)):
     result = um.delete_user(token, password)
     if result:
@@ -157,11 +158,68 @@ async def team_get_my(token: str = Depends(oauth2_scheme)):
 async def team_get(team_id: str):
     return um.get_team(team_id)
 
+# TODO: Профиль команды и patch
+
+@app.post('/chats/create', tags=['Чаты'])
+async def chat_create(addresser: str, token: str = Depends(oauth2_scheme)):
+    return um.create_chat(token, addresser)
+
+
+@app.get('/chats/my', tags=['Чаты'])
+async def chat_get_list(token: str = Depends(oauth2_scheme)):
+    return um.get_chat_list(token)
+
+
+@app.get('/chats/{chat_id}', tags=['Чаты'])
+async def chat_get(chat_id: str):
+    return um.get_chat(chat_id)
+
+
+@app.get('/chats/{chat_id}/get_messages', tags=['Чаты'])
+async def chat_get_messages(chat_id: str):
+    return um.get_chat_messages(chat_id)
+
+
+manager = ConnectionManager()
+@app.websocket("/ws/{chat_id}")
+async def websocket_endpoint(websocket: WebSocket, chat_id: str):
+    chat = um.get_chat(chat_id)
+
+    token = websocket.headers.get("Authorization")
+
+    if not token or not token.startswith("Bearer "):
+        await websocket.close()
+        return
+
+    token = token.split("Bearer ")[1]
+
+    username = um.get_user_by_token(token).get_profile().app_id
+
+    if not chat or username not in chat.members.split(', '):
+        # await websocket.close()
+        return
+
+    await manager.connect(chat_id, websocket)
+    await manager.broadcast(chat_id, f"{username} connected")
+    print('connected')
+
+    try:
+        while True:
+            message = await websocket.receive_text()
+            um.save_message(token, chat_id, message)
+            await manager.broadcast(chat_id, f"{username}: {message}")
+
+    except Exception:
+        pass
+
+    finally:
+        # manager.disconnect(chat_id, websocket)
+        # await websocket.close()
+        print('disconnected')
+
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=8000)
 
 # TODO: Do chat endpoints with websockets
-# TODO: Do calender endpoints
-# TODO: Do parsing in another one file
 # TODO: Do email and phone reg and auth endpoints and funcs in um

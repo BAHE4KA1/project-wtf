@@ -5,7 +5,7 @@ import os
 from fastapi import Depends
 from jose import JWTError, jwt
 
-from database import User, Profile, session, SessionToken, Team
+from database import User, Profile, session, SessionToken, Team, Chat, Message
 # from types import Result
 from config import pwd_context, oauth2_scheme, ALGORITHM, SECRET_KEY
 
@@ -113,6 +113,7 @@ def delete_user(token: str, password: str):
         session.delete(user.get_token())
         session.delete(user)
         session.commit()
+        delete_icon(token)
         return f'User {user.username} - ({user.id}) deleted'
     else:
         return '401'
@@ -267,3 +268,56 @@ def delete_icon(token):
         os.remove(avatar_url)
         return f'User {profile.app_id} - Icon deleted'
     return 'File deleted'
+
+
+"""
+Чаты
+"""
+
+
+def create_chat(token: str, app_id: str, is_group: bool = False):
+    profile = get_user_by_token(token).get_profile()
+    chat = Chat(is_group=is_group, members=profile.app_id)
+    chat.add_member(app_id)
+    if session.query(Chat).filter(Chat.members == chat.members).first() is not None:
+        return False
+    else:
+        session.add(chat)
+        session.commit()
+        return get_chat(chat.id)
+
+
+def get_chat(chat_id: str) -> Chat or False:
+    chat = session.query(Chat).filter(Chat.id == chat_id).first()
+    if chat:
+        return chat
+    else:
+        return False
+
+
+def get_chat_messages(chat_id: str):
+    messages = session.query(Message).filter(Message.chat_id == chat_id).order_by(Message.send_time)
+    return [message for message in messages]
+
+
+def save_message(token: str, chat_id: str, text: str):
+    profile = get_user_by_token(token).get_profile()
+    chat = get_chat(chat_id)
+    if chat and chat.is_member(profile.app_id):
+        message = Message(content=text, send_time=datetime.now(), chat=chat, sender=profile)
+        session.add(message)
+        session.commit()
+        return message
+    return 'No chat or not a member'
+
+
+def get_chat_list(token):
+    profile = get_user_by_token(token).get_profile()
+    chats = session.query(Chat).filter(Chat.members.contains(profile.app_id))
+    return [chat for chat in chats]
+
+
+def run_chat(chat_id):
+    chat = get_chat(chat_id)
+    if chat:
+        chat.run()

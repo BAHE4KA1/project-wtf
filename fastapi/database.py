@@ -1,5 +1,7 @@
-from sqlalchemy import String, create_engine, ForeignKey, Boolean
+from typing import List
+from sqlalchemy import String, create_engine, ForeignKey, Boolean, DateTime, func
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, sessionmaker, relationship
+from fastapi import WebSocket
 
 from config import DATABASE_URL as db_url
 
@@ -45,6 +47,7 @@ class Profile(Base):
     links: Mapped[str] = mapped_column(String(), nullable=True, default=None)
     teams: Mapped[str] = mapped_column(String(), nullable=True, default=None)
 
+    messages = relationship('Message', back_populates='sender')
     user = relationship("User", back_populates='profile')
     team_connection = relationship("Team", back_populates='profile')
 
@@ -164,10 +167,75 @@ class Team(Base):
         return [member.strip() for member in members_list if member.strip()]
 
 
-engine = create_engine(db_url, echo=True)
+class Chat(Base):
+    __tablename__ = "chats"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    is_group: Mapped[bool] = mapped_column(Boolean())
+    members: Mapped[str] = mapped_column(String(1023))
+
+    messages = relationship('Message', back_populates='chat')
+
+    async def add_message(self, sender, content):
+        new_message = Message(sender=sender, content=content, chat_id=self.id)
+        session.add(new_message)
+        session.commit()
+        return {'message': content}
+
+    def is_member(self, profile):
+        members_list = self.members.split(', ')
+        return profile.id in members_list
+
+    def add_member(self, member):
+        if not self.is_group:
+            members_list = self.members.split(', ')
+            if member not in members_list and len(members_list) < 2:
+                members_list.append(member)
+                self.members = ', '.join(members_list)
+                session.commit()
+                return True
+            else:
+                return False
+        else:
+            members_list = self.members.split(', ')
+            if member not in members_list:
+                members_list.append(member)
+                self.members = ', '.join(members_list)
+                session.commit()
+                return True
+            else:
+                return False
+
+    def remove_member(self, member):
+        if self.is_group:
+            members_list = self.members.split(', ')
+            if member in members_list:
+                members_list.remove(member)
+                self.members = ', '.join(members_list)
+                session.commit()
+                return True
+            else:
+                return False
+        else:
+            session.delete(self)
+            session.commit()
+            return True
+
+
+class Message(Base):
+    __tablename__ = "messages"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[int] = mapped_column(String(255), ForeignKey("chats.id"))
+    sender_id: Mapped[str] = mapped_column(String(255), ForeignKey("profiles.id"))
+    send_time: Mapped[str] = mapped_column(DateTime, default=func.now())
+    content: Mapped[str] = mapped_column(String(1023))
+
+    chat = relationship('Chat', back_populates='messages')
+    sender = relationship('Profile', back_populates='messages')
+
+
+engine = create_engine(db_url, echo=False)
 Base.metadata.create_all(engine)
 session = sessionmaker(engine)()
 
 
 # TODO: Finally do chat base
-# TODO: Icon delete and update

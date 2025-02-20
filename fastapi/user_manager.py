@@ -295,15 +295,10 @@ def get_chat(chat_id: str) -> Chat or False:
         return False
 
 
-def get_chat_messages(chat_id: str):
-    messages = session.query(Message).filter(Message.chat_id == chat_id).order_by(Message.send_time)
-    return [message for message in messages]
-
-
-def save_message(token: str, chat_id: str, text: str):
+async def save_message(token: str, chat_id: str, text: str):
     profile = get_user_by_token(token).get_profile()
     chat = get_chat(chat_id)
-    if chat and chat.is_member(profile.app_id):
+    if chat.is_member(profile):
         message = Message(content=text, send_time=datetime.now(), chat=chat, sender=profile)
         session.add(message)
         session.commit()
@@ -315,6 +310,11 @@ def get_chat_list(token):
     profile = get_user_by_token(token).get_profile()
     chats = session.query(Chat).filter(Chat.members.contains(profile.app_id))
     return [chat for chat in chats]
+
+
+def get_last_messages(chat_id):
+    messages = session.query(Message).filter(Message.chat_id == chat_id).order_by(Message.send_time.desc()).limit(20)
+    return [message for message in messages]
 
 
 def run_chat(chat_id):

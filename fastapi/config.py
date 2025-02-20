@@ -1,7 +1,7 @@
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 
-DATABASE_URL = "sqlite:///users.db"
+DATABASE_URL = "sqlite:///database.db"
 
 # Настройки для JWT
 SECRET_KEY = "aosidj342390AOKPLSDopk2390$@()2ji1[23-0"

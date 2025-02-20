@@ -1,7 +1,8 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, WebSocket
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, WebSocket, Query
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -11,6 +12,15 @@ from connection_manager import ConnectionManager
 from database import session
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Можно указать конкретные адреса, например: ["http://127.0.0.1:5500"]
+    allow_credentials=True,
+    allow_methods=["*"],  # Разрешаем все методы: GET, POST, PUT, DELETE, OPTIONS и т.д.
+    allow_headers=["*"],
+)
 
 
 @app.post('/auth/register', tags=['Авторизация'])
@@ -175,48 +185,47 @@ async def chat_get(chat_id: str):
     return um.get_chat(chat_id)
 
 
-@app.get('/chats/{chat_id}/get_messages', tags=['Чаты'])
-async def chat_get_messages(chat_id: str):
-    return um.get_chat_messages(chat_id)
+@app.get('/chats/{chat_id}/get_last_messages', tags=['Чаты'])
+async def chat_get_last_messages(chat_id: str):
+    return um.get_last_messages(chat_id)
 
 
 manager = ConnectionManager()
 @app.websocket("/ws/{chat_id}")
-async def websocket_endpoint(websocket: WebSocket, chat_id: str):
+async def websocket_endpoint(websocket: WebSocket, chat_id: str, token: str = Query(None)):
+    if not token:
+        await websocket.close(code=1008)  # Закрытие по причине отсутствия токена
+        return
+
+    user = um.get_user_by_token(token)
+    if not user:
+        await websocket.close(code=1008)
+        return
+
+    username = user.get_profile().app_id
     chat = um.get_chat(chat_id)
 
-    token = websocket.headers.get("Authorization")
-
-    if not token or not token.startswith("Bearer "):
-        await websocket.close()
-        return
-
-    token = token.split("Bearer ")[1]
-
-    username = um.get_user_by_token(token).get_profile().app_id
-
     if not chat or username not in chat.members.split(', '):
-        # await websocket.close()
+        await websocket.close(code=1008)
         return
 
-    await manager.connect(chat_id, websocket)
-    await manager.broadcast(chat_id, f"{username} connected")
-    print('connected')
+    await manager.connect(websocket)
+    await manager.broadcast(f"{username} connected")
 
     try:
         while True:
             message = await websocket.receive_text()
-            um.save_message(token, chat_id, message)
-            await manager.broadcast(chat_id, f"{username}: {message}")
-
-    except Exception:
-        pass
-
+            await um.save_message(token, chat_id, message)
+            await manager.broadcast(f"{username}: {message}")
+    except:
+        try:
+            await manager.broadcast(f"{username} disconnected")
+            await manager.disconnect(websocket)
+            await websocket.close()
+        except RuntimeError:
+            pass
     finally:
-        # manager.disconnect(chat_id, websocket)
-        # await websocket.close()
-        print('disconnected')
-
+        pass
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=8000)

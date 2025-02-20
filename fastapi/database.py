@@ -110,7 +110,7 @@ class SessionToken(Base):
 
     def get_user(self):
         user = session.query(User).filter(User.id == self.user_id).first()
-        return user
+        return user if user else None
 
 
 class Team(Base):
@@ -183,7 +183,7 @@ class Chat(Base):
 
     def is_member(self, profile):
         members_list = self.members.split(', ')
-        return profile.id in members_list
+        return profile.app_id in members_list
 
     def add_member(self, member):
         if not self.is_group:
@@ -225,7 +225,7 @@ class Message(Base):
     __tablename__ = "messages"
     id: Mapped[int] = mapped_column(primary_key=True)
     chat_id: Mapped[int] = mapped_column(String(255), ForeignKey("chats.id"))
-    sender_id: Mapped[str] = mapped_column(String(255), ForeignKey("profiles.id"))
+    sender_id: Mapped[str] = mapped_column(String(255), ForeignKey("profiles.app_id"))
     send_time: Mapped[str] = mapped_column(DateTime, default=func.now())
     content: Mapped[str] = mapped_column(String(1023))
 

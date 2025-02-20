@@ -1,14 +1,22 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useRoutes, Outlet } from "react-router-dom";
 import ProfileInside from "./ProfileInside/ProfileInside";
 import PersonalData from "./PersonalData/PersonalData";
 
+
 const ProfileLayout = () => {
+
+  const routes = [
+    { path: '/', element: <ProfileInside />},
+    { path: "personal-data", element: <PersonalData /> }
+  ];
+
+  const element = useRoutes(routes);
+
   return (
-    <Routes>
-      <Route index element={<ProfileInside />} />
-      <Route path="personal-data" element={<PersonalData />} /> 
-    </Routes>
+    <>
+    {element}
+    </>
   );
 };
 

@@ -1,0 +1,410 @@
+.personalData {
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
+  }
+  
+  .headerPersonalData {
+    width: 100vw;
+    height: 130px;
+    position: relative;
+    z-index: 9;
+    padding-top: 52px;
+    border-radius: 0 0 16px 16px;
+    background-image: url('../../../images/backgroundFullVer.png');
+    background-size: cover;
+    background-position: center;
+  }
+
+  .headerOverlap {
+    width: 100vw;
+    height: 165px;
+    position: relative;
+    z-index: 5;
+    background-color: #FFF;
+  }
+  
+  .containerHeaderTop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+  
+    img {
+      position: absolute;
+      left: 15px;
+      top: -5px;
+      z-index: 2;
+    }
+  
+    p {
+      width: 100%;
+      text-align: center;
+      color: #FFF;
+      font-family: Raleway;
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+    }
+  }
+  
+  .containerHeaderBottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+  }
+  
+  .avatarContainer {
+    display: flex;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  
+  .avatar {
+    position: relative;
+    left: 18px;
+    margin-top: 13px;
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    border: 2px solid #FFF;
+  }
+  
+  .fileUploader {
+    position: relative;
+    z-index: 3;
+    bottom: -60px;
+    left: -5px;
+  
+    input {
+      display: none;
+    }
+  
+    img {
+      width: 24px;
+      height: 24px;
+      border: none;
+    }
+  
+    button {
+      display: flex;
+      width: 36px;
+      height: 35px;
+      padding: 6px;
+      justify-content: center;
+      align-items: center;
+      border-radius: 24px;
+      background: #4285F4;
+      border: none;
+      cursor: pointer;
+    }
+  }
+  
+  .name {
+    color: #000;
+    text-align: center;
+    font-family: Raleway;
+    font-size: 20px;
+    font-weight: 500;
+    margin: 5px 0 0 0;
+  }
+  
+  .email {
+    color: #494949;
+    text-align: center;
+    font-family: Raleway;
+    font-size: 16px;
+    font-weight: 400;
+    margin: 0;
+  }
+  
+  .mainPersonalData {
+    padding: 0 16px 90px 16px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    flex-grow: 1;
+
+    -ms-overflow-style: none;        /* Для Internet Explorer и Edge */
+    scrollbar-width: none;           /* Для Firefox */
+    // max-height: calc(100vh - 82px - 116px);
+  }
+
+  /* Для браузеров на основе WebKit (Chrome, Safari) */
+  .mainPersonalData::-webkit-scrollbar {
+    display: none;
+  }
+  
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 16px;
+    color: var(--text-Primary, #282B33);
+    font-family: Inter;
+    font-size: 16px;
+    font-weight: 400;
+    border: none;
+    border-radius: 4px;
+    background:#F2F1F0;
+  }
+
+  textarea {
+    width: 100%;
+    // min-height: 48px;
+    // height: auto;
+    padding: 12px 16px;
+    color: var(--text-Primary, #282B33);
+    font-family: Inter;
+    font-size: 16px;
+    font-weight: 400;
+    border: none;
+    border-radius: 4px;
+    background:#F2F1F0;
+    resize: vertical;
+    overflow: hidden;
+    resize: none;
+  }
+
+  .shablon {
+
+    span {
+        color: #767982;
+        font-family: Inter;
+        font-size: 12px;
+        font-weight: 500;
+    }
+  }
+
+  .achievements {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    padding: 8px 0;
+    border: none;
+    border-radius: 4px;
+    background:#F2F1F0;
+
+    .achievementsInside {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+
+      img {
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    .achievementsInside span{
+      color: var(--text-Primary, #282B33);
+      font-family: Raleway;
+      font-size: 16px;
+      font-weight: 500;
+    }
+  
+  }
+
+  .rolesCont {
+    display: flex;
+    gap: 10px;
+  }
+
+  .roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .role {
+    // display: flex;
+    display: inline-block;
+    padding: 4px;
+    width: auto;
+    // justify-content: center;
+    // align-items: center;
+    border-radius: 4px;
+    background: #F2F1F0;
+    color: var(--text-Primary, #282B33);
+    font-family: Inter;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .buttonPlus {
+    height: auto;
+  }
+
+  .plus {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    aspect-ratio: 1;
+    height: 25px;
+    // width: auto;
+    border: none;
+    border-radius: 4px;
+    background: #F2F1F0;
+    color: var(--text-Primary, #282B33);
+    font-family: Inter;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .deleteContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .delete {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    background-color: #FFF;
+    border: none;
+  }
+  
+  .delete img {
+    cursor: pointer;
+  }
+  
+  .delete span {
+    color: #F00;
+    font-family: Raleway;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .deleteMenuPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 91.79vw;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease-in-out;
+  }
+
+  .deleteYes {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    border: 1px solid black;
+    gap: 10px;
+    border-radius: 12px;
+    background: #FFF;
+  }
+  
+  .deleteYes a,
+  .deleteYes .link {
+    width: 100%;
+    border-top: 1px solid black;
+    text-align: center;
+    text-decoration: none;
+    color: #F00;
+    font-family: Raleway;
+    font-size: 18px;
+    font-weight: 500;
+    transition: 0.6s;
+  }
+  
+  .deleteYes a:hover,
+  .deleteYes .link:hover {
+    background: #fdd;
+  }
+  
+  .deleteNo {
+    height: 50px;
+    background-color: #FFF;
+    border-radius: 12px;
+    color: var(--Core-Blue, #4285F4);
+    text-align: center;
+    font-family: Raleway;
+    font-size: 18px;
+    font-weight: 500;
+    border: none;
+    transition: 0.6s;
+  }
+  
+  .overlay {
+    position: fixed;
+    z-index: 99;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateY(300px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .rolePanel {
+    display: flex;
+    flex-direction: column;
+    width: 358px;
+    height: auto;
+    padding: 12px 0;
+    gap: 10px;
+    border-radius: 12px;
+    background: #FFF;
+  }
+
+  .rolePanelTop  {
+    display: flex;
+    padding: 0 16px;
+    justify-content: space-between;
+
+    span {
+      color: var(--text-Primary, #282B33);
+      font-family: Inter;
+      font-size: 16px;
+      font-weight: 400;
+    }
+
+    .buttonClose {
+      background-color: #FFF;
+      border: none;
+      cursor: pointer;
+    }
+  }
+
+  .roleButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 0 15px;
+  }
+
+  .roleButton {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    width: auto;
+    border-radius: 4px;
+    background: #F2F1F0;
+    color: var(--text-Primary, #282B33);
+    font-family: Inter;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+  }

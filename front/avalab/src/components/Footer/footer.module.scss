@@ -1,0 +1,28 @@
+.footerMain {
+    display: flex;
+    border-top: 1px solid #767982;
+    height: 94px;
+}
+
+.footerContainer {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 32px;
+}
+
+/* 📌 Исправляем ссылки в футере */
+.footerMain a, .footerMain .link {
+    text-decoration: none;
+    display: flex;
+}
+
+.footerMain a img, .footerMain .link img {
+    width: 40px;
+    height: 40px;
+    transition: opacity 0.3s;
+}
+
+.footerMain a:hover img, .footerMain .link:hover img {
+    opacity: 0.7;
+}

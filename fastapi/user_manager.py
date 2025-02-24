@@ -1,11 +1,11 @@
 from datetime import datetime
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, List
 import os
 from fastapi import Depends
 from jose import JWTError, jwt
 
-from database import User, Profile, session, SessionToken, Team, Chat, Message
+from database import User, Profile, session, SessionToken, Team, Chat, Message, Invite, Event
 # from types import Result
 from config import pwd_context, oauth2_scheme, ALGORITHM, SECRET_KEY
 
@@ -23,7 +23,7 @@ def create_user(username: str, password: str, app_id: str = None):
         session.commit()
         user = session.query(User).filter(User.username == username).first()
         if not app_id:
-            app_id = user.id
+            app_id = user.username
         session.add(Profile(user=user, app_id=app_id))
         session.commit()
         return True
@@ -124,14 +124,25 @@ def delete_user(token: str, password: str):
 """
 
 
+def search_profiles(filters: str):
+    query = session.query(Profile)
+    profiles = []
+    filters = filters.split(', ')
+    for f in filters:
+        profiles.append(query.filter(Profile.do_search and Profile.roles.icontains(f)).first())
+    return profiles
+
+
 def get_profile(app_id: str):
     profile = session.query(Profile).filter(Profile.app_id == app_id).first()
     return profile
 
 
-def profile_patch(token: str, new_id: str = None, full_name: str = None, do_search: bool = None, description: str = None):
+def profile_patch(token: str, new_id: str = None, full_name: str = None, do_search: bool = None, description: str = None, stack: str = None, roles: str = None):
     user = get_user_by_token(token)
     profile = session.query(Profile).filter(Profile.user_id == user.id).first()
+    profile.stack = stack if stack else profile.stack
+    profile.set_roles(roles.split(', ') if roles else profile.roles if profile.roles else [])
     profile.full_name = full_name if full_name else profile.full_name
     profile.description = description if description else profile.description
     profile.do_search = bool(do_search) if do_search is not None else profile.do_search
@@ -152,7 +163,6 @@ def profile_update_app_id(profile, new_id):
         team.update_member(old_id, new_id)
     if os.path.exists(f'user_files/{old_id}'):
         os.rename(f'user_files/{old_id}', f'user_files/{new_id}')
-
         avatar_file_type = ''
         a = False
         for i in profile.avatar_url:
@@ -160,16 +170,26 @@ def profile_update_app_id(profile, new_id):
                 avatar_file_type += i
             elif i == '.':
                 a = True
-
         profile.set_avatar(f'user_files/{new_id}/user-icon.{avatar_file_type}')
-    print(os.path.exists(f'user_files/{old_id}'), f'user_files/{old_id}')
+    messages = session.query(Message).filter(Message.sender_id == old_id).all()
+    for m in messages:
+        m.sender_id = new_id
     session.commit()
-    return get_my_teams_by_profile(profile)
+    profile = session.query(Profile).filter(Profile.app_id == new_id).first()
+    return profile
 
 
 """
 Команды
 """
+
+
+def search_teams(filters: str):
+    teams = []
+    filters = filters.split(', ')
+    for f in filters:
+        teams.append(session.query(Team).filter(Team.missing_roles.icontains(f)).first())
+    return teams
 
 
 def get_membered_teams(app_id):
@@ -184,7 +204,24 @@ def create_team(token: str, title: str, app_id: str):
     team = Team(title=title, app_id=app_id, profile=profile, members=profile.app_id)
     session.add(team)
     session.commit()
+    chat = create_chat(token, app_id=app_id, is_group=True)
+    session.add(chat)
+    session.commit()
     return get_my_teams_by_profile(profile)
+
+
+def patch_team(token: str, team_id: str, new_id: str = None, title: str = None, description: str = None, missing_roles: str = None):
+    team = session.query(Team).filter(Team.app_id == team_id).first()
+    if team in get_my_teams(token):
+        if team:
+            team.set_missing_roles(missing_roles.split(', ') if missing_roles else team.missing_roles if team.missing_roles else [])
+            team.app_id = new_id if new_id else team.app_id
+            team.title = title if title else team.title
+            team.description = description if description else team.description
+            session.commit()
+            return get_team(team_id)
+        return '404'
+    return '403'
 
 
 def delete_team(token: str, team_id: str):
@@ -277,47 +314,120 @@ def delete_icon(token):
 
 def create_chat(token: str, app_id: str, is_group: bool = False):
     profile = get_user_by_token(token).get_profile()
-    chat = Chat(is_group=is_group, members=profile.app_id)
-    chat.add_member(app_id)
-    if session.query(Chat).filter(Chat.members == chat.members).first() is not None:
-        return False
-    else:
+    if is_group:
+        team = get_team(app_id)
+        chat = Chat(is_group=is_group, members=team.members, team=team)
         session.add(chat)
         session.commit()
-        return get_chat(chat.id)
+        return get_chat(chat.id, token)
+    if profile.app_id != app_id:
+        chat = Chat(is_group=is_group, members=profile.app_id)
+        chat.add_member(app_id)
+        if session.query(Chat).filter(Chat.members == chat.members).first() is not None:
+            return False
+        else:
+            session.add(chat)
+            session.commit()
+            return get_chat(chat.id, token)
+    return False
 
 
-def get_chat(chat_id: str) -> Chat or False:
+def get_chat(chat_id: str, token) -> Chat or False:
     chat = session.query(Chat).filter(Chat.id == chat_id).first()
+    if get_user_by_token(token).get_profile().app_id not in chat.members:
+        return False
     if chat:
         return chat
-    else:
-        return False
+    return False
 
 
-async def save_message(token: str, chat_id: str, text: str):
+async def save_message(token: str, chat_id: str, text: str, is_invite: bool = False) -> str or dict:
     profile = get_user_by_token(token).get_profile()
-    chat = get_chat(chat_id)
-    if chat.is_member(profile):
-        message = Message(content=text, send_time=datetime.now(), chat=chat, sender=profile)
+    chat = get_chat(chat_id, token)
+    if chat.is_member(profile) and not is_invite:
+        message = Message(content=text, send_time=datetime.now(), chat=chat, sender=profile, is_invite=False)
         session.add(message)
         session.commit()
         return message
+    elif chat.is_member(profile) and not chat.is_group and is_invite:
+        for m in chat.members.split(', '):
+            if m != profile.app_id:
+                message = Message(content=text, send_time=datetime.now(), chat=chat, sender=profile, is_invite=True)
+                session.add(message)
+                session.commit()
+                invite = create_invite(m, message)
+                return [message, invite]
     return 'No chat or not a member'
 
 
-def get_chat_list(token):
+def get_chat_list(token) -> List[dict]:
     profile = get_user_by_token(token).get_profile()
     chats = session.query(Chat).filter(Chat.members.contains(profile.app_id))
     return [chat for chat in chats]
 
 
-def get_last_messages(chat_id):
-    messages = session.query(Message).filter(Message.chat_id == chat_id).order_by(Message.send_time.desc()).limit(20)
-    return [message for message in messages]
+def get_last_messages(chat_id: str, page: int, single: bool, token: str) -> List[dict] or False:
+    sender = get_user_by_token(token).get_profile().app_id
+    chat = get_chat(chat_id, token)
+    if sender not in chat.members:
+        return False
+    if not single:
+        messages = session.query(Message).filter(Message.chat_id == chat_id).order_by(Message.send_time.desc()).limit(20).offset((page-1)*20)
+        return [m for m in messages]
+    else:
+        return session.query(Message).filter(Message.chat_id == chat_id).order_by(Message.send_time.desc()).first()
 
 
-def run_chat(chat_id):
-    chat = get_chat(chat_id)
-    if chat:
-        chat.run()
+"""
+Приглашения
+"""
+
+
+def create_invite(receiver_id: str, message) -> dict or bool:
+    receiver = get_profile(receiver_id)
+    team = get_team(message.content)
+    invite = Invite(receiver=receiver, message=message, team=team)
+    session.add(invite)
+    session.commit()
+    invite = session.query(Invite).filter(Invite.message_id == message.id).first()
+    return invite
+
+
+def get_invites(token: str):
+    profile = get_user_by_token(token).get_profile()
+    invites = session.query(Invite).filter(Invite.receiver_id == profile.app_id)
+    return [i for i in invites]
+
+
+def invite_status(token: str, invite_id: str, status: bool):
+    invite = session.query(Invite).filter(Invite.id == invite_id).first()
+    if invite.receiver_id == get_user_by_token(token).get_profile().app_id:
+        invite.status = status
+        session.commit()
+        if invite.status == True:
+            invite.do_invite()
+            return session.query(Invite).filter(Invite.id == invite_id).first()
+        return session.query(Invite).filter(Invite.id == invite_id).first()
+    return 'No invite found'
+
+
+def cancel_invite(token: str, invite_id: str):
+    invite = session.query(Invite).filter(Invite.id == invite_id).first()
+    message = invite.get_message()
+    sender = get_user_by_token(token).get_profile()
+    if invite.get_sender() == sender and invite.status is not None:
+        invite.delete()
+        message.delete()
+        session.commit()
+        return True
+    return False
+
+
+"""
+Календарь
+"""
+
+
+def get_calendar(month: str = datetime.now().month):
+    events = session.query(Event).filter(Event.date_time.month == month).all()
+    return [event for event in events]

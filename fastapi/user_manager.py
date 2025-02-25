@@ -2,11 +2,10 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Optional, List
 import os
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from jose import JWTError, jwt
 
 from database import User, Profile, session, SessionToken, Team, Chat, Message, Invite, Event
-# from types import Result
 from config import pwd_context, oauth2_scheme, ALGORITHM, SECRET_KEY
 
 
@@ -114,9 +113,9 @@ def delete_user(token: str, password: str):
         session.delete(user)
         session.commit()
         delete_icon(token)
-        return f'User {user.username} - ({user.id}) deleted'
+        return {'result': 'success', 'message': 'Account was successfully deleted'}
     else:
-        return '401'
+        raise HTTPException(401)
 
 
 """
@@ -129,8 +128,8 @@ def search_profiles(filters: str):
     profiles = []
     filters = filters.split(', ')
     for f in filters:
-        profiles.append(query.filter(Profile.do_search and Profile.roles.icontains(f)).first())
-    return profiles
+        profiles.append(query.filter(Profile.do_search and Profile.roles.icontains(f)).all())
+    return [p for p in profiles]
 
 
 def get_profile(app_id: str):
@@ -230,8 +229,8 @@ def delete_team(token: str, team_id: str):
     if team in [t for t in get_my_teams_by_profile(profile)]:
         session.delete(team)
         session.commit()
-        return f'Team {team_id} - ({team.title}) deleted'
-    return '404'
+        return {'result': 'success', 'message': f'Team {team.title} has been deleted'}
+    raise HTTPException(404)
 
 
 def get_team(app_id):
@@ -261,7 +260,7 @@ def add_team_member(token: str, team_id: str, member_id: str):
         team.add_member(member_id)
         session.commit()
         return team.members
-    return 'No team or member found'
+    raise HTTPException(404)
 
 
 def delete_team_member(token: str, team_id: str, member_id: str):
@@ -272,7 +271,7 @@ def delete_team_member(token: str, team_id: str, member_id: str):
         team.remove_member(member_id)
         session.commit()
         return team.members
-    return 'No team or member found'
+    raise HTTPException(404)
 
 
 """
@@ -303,8 +302,8 @@ def delete_icon(token):
     profile.delete_avatar()
     if os.path.exists(avatar_url):
         os.remove(avatar_url)
-        return f'User {profile.app_id} - Icon deleted'
-    return 'File deleted'
+        return {'result': 'success', 'message': 'Icon has been deleted'}
+    return {'result': 'success', 'message': 'Icon has been deleted'}
 
 
 """
@@ -357,7 +356,7 @@ async def save_message(token: str, chat_id: str, text: str, is_invite: bool = Fa
                 session.commit()
                 invite = create_invite(m, message)
                 return [message, invite]
-    return 'No chat or not a member'
+    raise HTTPException(400)
 
 
 def get_chat_list(token) -> List[dict]:
@@ -404,23 +403,23 @@ def invite_status(token: str, invite_id: str, status: bool):
     if invite.receiver_id == get_user_by_token(token).get_profile().app_id:
         invite.status = status
         session.commit()
-        if invite.status == True:
+        if invite.status:
             invite.do_invite()
             return session.query(Invite).filter(Invite.id == invite_id).first()
         return session.query(Invite).filter(Invite.id == invite_id).first()
-    return 'No invite found'
+    raise HTTPException(404)
 
 
 def cancel_invite(token: str, invite_id: str):
     invite = session.query(Invite).filter(Invite.id == invite_id).first()
     message = invite.get_message()
     sender = get_user_by_token(token).get_profile()
-    if invite.get_sender() == sender and invite.status is not None:
+    if invite.get_sender() == sender and invite.status is None:
         invite.delete()
         message.delete()
         session.commit()
         return True
-    return False
+    raise HTTPException(400)
 
 
 """

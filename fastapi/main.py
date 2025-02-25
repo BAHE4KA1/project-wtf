@@ -55,10 +55,7 @@ async def logout(token: str = Depends(oauth2_scheme)):
 @app.delete('/auth/delete_user', tags=['Авторизация'])
 async def delete_user(password: str, token: str = Depends(oauth2_scheme)):
     result = um.delete_user(token, password)
-    if result:
-        return {'result': 'success', 'message': 'User deleted successfully`'}
-    else:
-        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Incorrect password')
+    return result
 
 
 @app.get('/profiles/me', tags=['Профиль'])
@@ -146,7 +143,7 @@ async def chat_get_last_messages(chat_id: str, page: int = 1, single: bool = Fal
     return um.get_last_messages(chat_id, page, single, token)
 
 
-@app.get('/invites/', tags=['Приглашения'])
+@app.get('/invites/my', tags=['Приглашения'])
 async def get_invites(token: str = Depends(oauth2_scheme)):
     return um.get_invites(token)
 

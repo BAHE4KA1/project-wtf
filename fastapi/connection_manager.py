@@ -23,5 +23,6 @@ class ConnectionManager:
             try:
                 await connection.send_json(message, mode='text')
             except Exception as e:
+
                 print(f"Ошибка при отправке сообщения: {e}")
                 await self.disconnect(connection, chat_id)
